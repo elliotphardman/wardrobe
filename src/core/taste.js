@@ -40,10 +40,14 @@ export function buildModel(swipes, itemsById) {
   return { scores, count };
 }
 
+// Average agreement per swipe, scaled to -1..1 (1 = matches every feature of every like).
+const MAX_FEATURE_SUM = 3 * (W_ITEM + W_PAIR + W_CPAIR + W_SLOT);
+
 export function tasteScore(model, outfit) {
+  if (model.count === 0) return 0;
   let sum = 0;
   for (const { key, weight } of featuresOf(outfit)) sum += weight * (model.scores.get(key) ?? 0);
-  return Math.tanh(sum / 3);
+  return sum / (MAX_FEATURE_SUM * model.count);
 }
 
 export function tasteWeight(count) {
