@@ -6,5 +6,9 @@
   "scripts": {
     "test": "node --test tests/",
     "vendor": "node scripts/vendor.js"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.8",
+    "fflate": "^0.8.3"
   }
 }
