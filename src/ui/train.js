@@ -132,7 +132,9 @@ export function render(root) {
   }
 
   const card = el('div', { class: 'card' }, [
-    ...SLOTS.map(s => el('img', { src: pool.url(outfit[s].photo), alt: '', draggable: 'false' })),
+    el('div', { class: 'look' }, SLOTS.map(s => el('div', { class: 'look-piece' }, [
+      el('img', { src: pool.url(outfit[s].photo), alt: '', draggable: 'false' }),
+    ]))),
     el('div', { class: 'stamp like' }, 'LIKE'),
     el('div', { class: 'stamp nope' }, 'NOPE'),
   ]);

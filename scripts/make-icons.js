@@ -20,7 +20,7 @@ function distToSeg(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 function icon(size) {
-  const bg = [196, 98, 66], fg = [251, 246, 238];
+  const bg = [27, 34, 48], fg = [243, 196, 49];
   const s = size / 100, w = 5 * s;
   // hanger: hook arc + body triangle (in 100x100 space)
   const segs = [[50, 38, 18, 66], [50, 38, 82, 66], [18, 66, 82, 66], [50, 38, 50, 30]];

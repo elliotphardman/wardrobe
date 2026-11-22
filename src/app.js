@@ -6,7 +6,7 @@ import * as train from './ui/train.js';
 import * as settings from './ui/settings.js';
 import { maybeShowInstallPrompt } from './ui/install-prompt.js';
 
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
 export const state = { items: [], swipes: [] };
 // Bumped on every reload so screens can tell their cached results are stale.
 export let dataVersion = 0;

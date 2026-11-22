@@ -56,7 +56,11 @@ export function render(root) {
   root.append(
     camera, library,
     el('div', { class: 'wardrobe-head' }, [
-      el('div', { class: 'muted' }, `${count} piece${count === 1 ? '' : 's'}`),
+      el('div', { class: 'count' }, [
+        `${count} piece${count === 1 ? '' : 's'}`,
+        count ? el('span', {}, `${['top', 'trousers', 'shoes'].map(t =>
+          `${state.items.filter(i => i.type === t).length} ${t === 'top' ? 'tops' : t}`).join(', ')}`) : '',
+      ]),
       addBtn,
     ]),
     menu,

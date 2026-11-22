@@ -1,9 +1,9 @@
 // Offline support: network-first (always fresh when online), cache fallback when offline.
-const CACHE = 'wardrobe-v1';
+const CACHE = 'wardrobe-v2';
 const FILES = [
   './', './index.html', './styles.css', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
-  './vendor/fflate.js',
+  './vendor/fflate.js', './fonts/archivo-wdth.woff2',
   './src/app.js', './src/photo.js',
   './src/core/colours.js', './src/core/occasions.js', './src/core/rules.js',
   './src/core/taste.js', './src/core/generator.js', './src/core/backup.js',

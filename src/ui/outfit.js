@@ -11,6 +11,9 @@ const KEY = 'lastOccasion';
 const SLOT_LABEL = { top: 'Top', trousers: 'Trousers', shoes: 'Shoes' };
 const SLOT_PLURAL = { top: 'tops', trousers: 'trousers', shoes: 'shoes' };
 const pool = urlPool();
+const ICON = 'viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+const LOCK_CLOSED = `<svg ${ICON}><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
+const LOCK_OPEN = `<svg ${ICON}><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>`;
 
 let occasionId = loadOccasion();
 let locked = {};
@@ -63,11 +66,15 @@ export function render(root) {
     return;
   }
 
-  root.append(el('div', { class: 'chips' }, OCCASIONS.map(o => el('button', {
-    class: `chip${o.id === occasionId ? ' active' : ''}`,
-    onclick: () => { setOccasion(o.id); render(root); },
-  }, o.label))));
-  root.querySelector('.chip.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+  root.append(el('div', { class: 'tape', role: 'tablist', 'aria-label': 'Occasion' }, [
+    el('div', { class: 'tape-strip' }, OCCASIONS.map(o => el('button', {
+      class: o.id === occasionId ? 'active' : '',
+      role: 'tab',
+      'aria-selected': String(o.id === occasionId),
+      onclick: () => { setOccasion(o.id); render(root); },
+    }, o.label))),
+  ]));
+  root.querySelector('.tape .active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 
   // Regenerate if there's no outfit yet, or the wardrobe changed since the last one.
   if (!current?.outfit || seenVersion !== dataVersion) {
@@ -88,24 +95,24 @@ export function render(root) {
   }
 
   const outfit = current.outfit;
-  root.append(el('div', { class: 'outfit-stack' }, SLOTS.map(s => {
+  root.append(el('div', { class: 'look' }, SLOTS.map(s => {
     const item = outfit[s];
     const isLocked = locked[s]?.id === item.id;
-    return el('div', { class: 'piece' }, [
+    const name = item.name || `${colourLabel(item.colour)} ${SLOT_LABEL[s].toLowerCase()}`;
+    const lock = el('button', {
+      class: `lock${isLocked ? ' on' : ''}`,
+      'aria-pressed': String(isLocked),
+      'aria-label': isLocked ? `Unlock ${name}` : `Keep ${name}`,
+      onclick: () => {
+        if (isLocked) delete locked[s]; else locked[s] = item;
+        render(root);
+      },
+    });
+    lock.innerHTML = isLocked ? LOCK_CLOSED : LOCK_OPEN;
+    return el('div', { class: 'look-piece' }, [
       el('img', { src: pool.url(item.photo), alt: '' }),
-      el('div', { class: 'info' }, [
-        el('div', { class: 'slot' }, SLOT_LABEL[s]),
-        el('div', { class: 'name' }, item.name || `${colourLabel(item.colour)} ${SLOT_LABEL[s].toLowerCase()}`),
-        el('div', { class: 'muted' }, colourLabel(item.colour)),
-      ]),
-      el('button', {
-        class: `lock${isLocked ? ' on' : ''}`,
-        'aria-pressed': String(isLocked),
-        onclick: () => {
-          if (isLocked) delete locked[s]; else locked[s] = item;
-          render(root);
-        },
-      }, isLocked ? 'Locked' : 'Lock'),
+      el('span', { class: 'look-label' }, name),
+      lock,
     ]);
   })));
 
