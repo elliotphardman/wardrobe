@@ -1,16 +1,24 @@
 // Train screen: swipe right to like an outfit, left to dislike.
 import { SLOTS } from '../core/occasions.js';
 import { buildModel, outfitKey } from '../core/taste.js';
-import { nextTrainingOutfit } from '../core/generator.js';
+import { nextTrainingOutfit, trainingBlocker } from '../core/generator.js';
 import { addSwipe, deleteSwipe, newId } from '../data/db.js';
 import { urlPool } from '../photo.js';
 import { el } from './item-editor.js';
-import { state, reload, toast, showScreen } from '../app.js';
+import { state, reload, toast, showScreen, currentScreen } from '../app.js';
 
 const COMMIT_FRACTION = 0.3;
 const pool = urlPool();
 let sessionStack = []; // swipes made in this session, for undo: { swipe, outfit }
 let pending = null;    // outfit to show next (used by undo)
+
+// Forget undo history (after a reset or import, it would point at stale data).
+export function resetSession() {
+  sessionStack = [];
+  pending = null;
+}
+
+const rerender = root => { if (currentScreen() === 'train') render(root); };
 
 function pickNext() {
   if (pending) { const o = pending; pending = null; return o; }
@@ -34,7 +42,7 @@ async function record(outfit, liked, root) {
   } catch (e) {
     toast(`Couldn't save swipe: ${e.message}`);
   }
-  render(root);
+  rerender(root);
 }
 
 async function undo(root) {
@@ -47,7 +55,7 @@ async function undo(root) {
   } catch (e) {
     toast(`Couldn't undo: ${e.message}`);
   }
-  render(root);
+  rerender(root);
 }
 
 function attachDrag(card, onCommit) {
@@ -108,11 +116,16 @@ export function render(root) {
 
   const outfit = pickNext();
   if (!outfit) {
-    const hasAll = SLOTS.every(s => state.items.some(i => i.type === s));
-    root.append(el('div', { class: 'empty' }, hasAll
-      ? [el('h2', {}, "You've rated every outfit"), el('p', {}, 'Add more clothes to keep training.')]
-      : [el('h2', {}, 'Nothing to swipe yet'), el('p', {}, 'Add at least one top, one pair of trousers and one pair of shoes.'),
-        el('button', { class: 'btn', onclick: () => showScreen('wardrobe') }, 'Go to wardrobe')]));
+    const swiped = new Set(state.swipes.map(s => outfitKey(s.itemIds)));
+    const reason = trainingBlocker(state.items, swiped);
+    const goWardrobe = () => el('button', { class: 'btn', onclick: () => showScreen('wardrobe') }, 'Go to wardrobe');
+    const content = {
+      exhausted: [el('h2', {}, "You've rated every outfit"), el('p', {}, 'Add more clothes to keep training.')],
+      'no-consistent': [el('h2', {}, 'Nothing to swipe yet'),
+        el('p', {}, 'Your pieces are too far apart in dressiness to make an outfit. Add a few pieces with similar ratings (e.g. trainers and jeans rated 1–2).'), goWardrobe()],
+      missing: [el('h2', {}, 'Nothing to swipe yet'), el('p', {}, 'Add at least one top, one pair of trousers and one pair of shoes.'), goWardrobe()],
+    }[reason] ?? [el('h2', {}, 'Nothing to swipe right now')];
+    root.append(el('div', { class: 'empty' }, content));
     if (sessionStack.length) root.append(el('div', { class: 'train-buttons' }, [undoBtn]));
     root.append(counter);
     return;

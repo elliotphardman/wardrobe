@@ -49,3 +49,10 @@ test('deleteSwipe removes exactly one', async () => {
 test('newId returns unique strings', () => {
   assert.notEqual(db.newId(), db.newId());
 });
+
+test('replaceAll with a bad record leaves old data untouched', async () => {
+  await fresh();
+  await db.saveItem(item('old'));
+  await assert.rejects(db.replaceAll({ items: [item('n1'), { type: 'top' }], swipes: [] }));
+  assert.deepEqual((await db.listItems()).map(i => i.id), ['old']);
+});

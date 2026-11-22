@@ -28,7 +28,7 @@ npm test
 ## Publish to GitHub Pages
 
 1. Create an empty public repository on GitHub (for example `wardrobe`).
-2. Push this repo's `main` branch to it.
+2. Merge the `build/wardrobe-app` branch into `main`, then push `main` to it. (`.nojekyll` makes Pages serve the files untouched.)
 3. On GitHub: **Settings → Pages → Build and deployment → Deploy from a branch**, then choose `main` and `/ (root)`.
 4. After a minute the app is live at `https://<your-username>.github.io/<repo>/`.
 

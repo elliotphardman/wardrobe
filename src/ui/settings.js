@@ -2,25 +2,36 @@
 import { buildBackup, readBackup } from '../core/backup.js';
 import { listItems, listSwipes, replaceAll, clearSwipes } from '../data/db.js';
 import { el } from './item-editor.js';
-import { state, reload, toast, APP_VERSION } from '../app.js';
+import { state, reload, toast, APP_VERSION, currentScreen } from '../app.js';
+import { resetSession } from './train.js';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export async function exportBackup() {
+export async function buildBackupFile() {
   const [items, swipes] = await Promise.all([listItems(), listSwipes()]);
   const withBytes = await Promise.all(items.map(async ({ photo, ...rest }) =>
     ({ ...rest, photoBytes: new Uint8Array(await photo.arrayBuffer()) })));
   const bytes = buildBackup({ items: withBytes, swipes });
-  const file = new File([bytes], `wardrobe-backup-${today()}.zip`, { type: 'application/zip' });
+  return new File([bytes], `wardrobe-backup-${today()}.zip`, { type: 'application/zip' });
+}
 
-  if (navigator.canShare?.({ files: [file] })) {
+const canShareFile = file => !!navigator.canShare?.({ files: [file] });
+
+// Must be called straight from a tap: Safari only allows share() right after user input.
+export async function shareOrDownload(file) {
+  if (canShareFile(file)) {
     try {
       await navigator.share({ files: [file] });
+      return;
     } catch (e) {
-      if (e.name !== 'AbortError') throw e;
+      if (e.name === 'AbortError') return;
+      if (e.name !== 'NotAllowedError') throw e;
     }
-    return;
   }
+  download(file);
+}
+
+function download(file) {
   const url = URL.createObjectURL(file);
   const a = el('a', { href: url, download: file.name });
   document.body.append(a);
@@ -41,6 +52,7 @@ export async function importBackup(file) {
   if (!ok) return false;
   const items = data.items.map(({ photoBytes, ...rest }) => ({ ...rest, photo: new Blob([photoBytes], { type: 'image/jpeg' }) }));
   await replaceAll({ items, swipes: data.swipes });
+  resetSession();
   await reload();
   toast(`Restored ${items.length} items`);
   return true;
@@ -55,9 +67,37 @@ export function render(root) {
     picker.value = '';
     if (!file) return;
     try {
-      if (await importBackup(file)) render(root);
+      if (await importBackup(file) && currentScreen() === 'settings') render(root);
     } catch (e) {
       toast(`Import failed: ${e.message}`);
+    }
+  });
+
+  // Export takes two taps: build the file, then share it (iPhone needs share() right after a tap).
+  let built = null;
+  const exportLabel = el('span', {}, 'Export backup');
+  const exportRow = el('button', { class: 'row' }, [exportLabel, el('span', { class: 'muted' }, '›')]);
+  const resetExport = () => { built = null; exportLabel.textContent = 'Export backup'; };
+  exportRow.addEventListener('click', async () => {
+    try {
+      if (built) {
+        const file = built;
+        resetExport();
+        await shareOrDownload(file);
+        return;
+      }
+      exportLabel.textContent = 'Preparing backup…';
+      const file = await buildBackupFile();
+      if (canShareFile(file)) {
+        built = file;
+        exportLabel.textContent = 'Tap again to save backup file';
+      } else {
+        resetExport();
+        download(file);
+      }
+    } catch (e) {
+      resetExport();
+      toast(`Export failed: ${e.message}`);
     }
   });
 
@@ -72,9 +112,7 @@ export function render(root) {
     ]),
     el('div', { class: 'section-title' }, 'Backup'),
     el('div', { class: 'list' }, [
-      row('Export backup', async () => {
-        try { await exportBackup(); } catch (e) { toast(`Export failed: ${e.message}`); }
-      }),
+      exportRow,
       row('Import backup', () => picker.click()),
     ]),
     el('p', { class: 'muted', style: 'font-size: 14px; margin: 8px 4px 0' },
@@ -85,9 +123,10 @@ export function render(root) {
         if (!confirm('Forget all your swipes? Your clothes stay.')) return;
         try {
           await clearSwipes();
+          resetSession();
           await reload();
           toast('Training reset');
-          render(root);
+          if (currentScreen() === 'settings') render(root);
         } catch (e) {
           toast(`Reset failed: ${e.message}`);
         }

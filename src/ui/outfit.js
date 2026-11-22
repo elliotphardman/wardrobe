@@ -5,7 +5,7 @@ import { buildModel, outfitKey } from '../core/taste.js';
 import { generateOutfit } from '../core/generator.js';
 import { urlPool } from '../photo.js';
 import { el } from './item-editor.js';
-import { state, showScreen } from '../app.js';
+import { state, showScreen, dataVersion } from '../app.js';
 
 const KEY = 'lastOccasion';
 const SLOT_LABEL = { top: 'Top', trousers: 'Trousers', shoes: 'Shoes' };
@@ -16,6 +16,7 @@ let occasionId = loadOccasion();
 let locked = {};
 let shown = new Set();
 let current = null;
+let seenVersion = -1;
 
 function loadOccasion() {
   try {
@@ -37,8 +38,12 @@ const colourLabel = id => PALETTE.find(c => c.id === id)?.label ?? id;
 
 function next() {
   const byId = new Map(state.items.map(i => [i.id, i]));
-  // Drop locks on pieces that were deleted since.
-  for (const s of SLOTS) if (locked[s] && !byId.has(locked[s].id)) delete locked[s];
+  // Refresh locks to the latest copy of each piece; drop deleted ones.
+  for (const s of SLOTS) {
+    if (!locked[s]) continue;
+    const fresh = byId.get(locked[s].id);
+    if (fresh) locked[s] = fresh; else delete locked[s];
+  }
   const model = buildModel(state.swipes, byId);
   const result = generateOutfit(state.items, occasionId, model, { locked, avoidKeys: shown });
   if (result.outfit) shown.add(outfitKey(result.outfit));
@@ -64,9 +69,11 @@ export function render(root) {
   }, o.label))));
   root.querySelector('.chip.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
 
-  // Regenerate if there's no outfit yet, or a shown piece no longer exists.
-  const ids = new Set(state.items.map(i => i.id));
-  if (!current || (current.outfit && SLOTS.some(s => !ids.has(current.outfit[s].id)))) next();
+  // Regenerate if there's no outfit yet, or the wardrobe changed since the last one.
+  if (!current?.outfit || seenVersion !== dataVersion) {
+    seenVersion = dataVersion;
+    next();
+  }
 
   if (!current.outfit) {
     const occ = getOccasion(occasionId);

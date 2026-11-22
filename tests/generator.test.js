@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateOutfit, nextTrainingOutfit, totalScore } from '../src/core/generator.js';
+import { generateOutfit, nextTrainingOutfit, totalScore, trainingBlocker } from '../src/core/generator.js';
 import { buildModel, outfitKey } from '../src/core/taste.js';
 import { getOccasion, fitsOccasion } from '../src/core/occasions.js';
 
@@ -74,4 +74,24 @@ test('training outfits keep dressiness spread within 1', () => {
 test('totalScore equals baseScore with no swipes', () => {
   const o = { top: byId.get('t2'), trousers: byId.get('p2'), shoes: byId.get('s2') };
   assert.equal(totalScore(o, empty), 1.0);
+});
+
+test('untrained ties still vary the top across requests', () => {
+  const many = [
+    ...Array.from({ length: 10 }, (_, i) => it('T' + i, 'top', 'white', 3)),
+    ...Array.from({ length: 10 }, (_, i) => it('P' + i, 'trousers', 'navy', 3)),
+    ...Array.from({ length: 5 }, (_, i) => it('S' + i, 'shoes', 'brown', 3)),
+  ];
+  const m = buildModel([], new Map(many.map(i => [i.id, i])));
+  const rng = mulberry32(7), tops = new Set();
+  for (let n = 0; n < 10; n++) tops.add(generateOutfit(many, 'work', m, { rng }).outfit.top.id);
+  assert.ok(tops.size >= 4, `tops=${tops.size}`);
+});
+
+test('trainingBlocker explains why there is no training outfit', () => {
+  const tiny = [it('a', 'top', 'white', 3), it('b', 'trousers', 'navy', 3), it('c', 'shoes', 'brown', 3)];
+  assert.equal(trainingBlocker(tiny.slice(0, 2), new Set()), 'missing');
+  assert.equal(trainingBlocker(tiny, new Set(['a|b|c'])), 'exhausted');
+  const spreadOut = [it('a', 'top', 'white', 1), it('b', 'trousers', 'navy', 2), it('c', 'shoes', 'brown', 4)];
+  assert.equal(trainingBlocker(spreadOut, new Set()), 'no-consistent');
 });

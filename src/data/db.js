@@ -14,7 +14,7 @@ export function openDb(name = 'wardrobe') {
       if (!d.objectStoreNames.contains('swipes')) d.createObjectStore('swipes', { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => { conn = null; reject(req.error); };
   });
   return conn;
 }
@@ -38,8 +38,15 @@ async function read(store, fn) {
 async function write(stores, fn) {
   const d = await openDb(connName ?? undefined);
   const tx = d.transaction(stores, 'readwrite');
-  fn(tx);
-  return done(tx);
+  const finished = done(tx);
+  try {
+    fn(tx);
+  } catch (e) {
+    tx.abort();
+    finished.catch(() => {});
+    throw e;
+  }
+  return finished;
 }
 
 export const listItems = () => read('items', s => s.getAll());

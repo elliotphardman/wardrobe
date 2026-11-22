@@ -9,7 +9,7 @@ export function maybeShowInstallPrompt() {
   if (isStandalone()) return;
   try { if (localStorage.getItem(KEY)) return; } catch { /* storage unavailable */ }
   const el = document.getElementById('install-banner');
-  el.innerHTML = '<p>Tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>, to keep your wardrobe safe.</p><button aria-label="Dismiss">✕</button>';
+  el.innerHTML = '<p><strong>Install first:</strong> tap Share, then <strong>Add to Home Screen</strong>, and use the app from there. Clothes added here in Safari won\'t move to the Home Screen app.</p><button aria-label="Dismiss">✕</button>';
   el.hidden = false;
   el.querySelector('button').addEventListener('click', () => {
     el.hidden = true;

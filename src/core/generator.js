@@ -25,6 +25,9 @@ function combos(pools, rng) {
   return out;
 }
 
+// Highest score first; equal scores in random order so ties don't favour the newest items.
+const byScore = (x, y) => y.score - x.score || x.tie - y.tie;
+
 const byType = (items, slot) => items.filter(i => i.type === slot);
 const spread = o => {
   const d = SLOTS.map(s => o[s].dressiness);
@@ -58,8 +61,8 @@ export function generateOutfit(items, occasionId, model, opts = {}) {
   if (fresh.length) candidates = fresh;
 
   const scored = candidates
-    .map(outfit => ({ outfit, score: totalScore(outfit, model) }))
-    .sort((x, y) => y.score - x.score)
+    .map(outfit => ({ outfit, score: totalScore(outfit, model), tie: rng() }))
+    .sort(byScore)
     .slice(0, TOP_N);
   return { outfit: pickWeighted(scored, rng), missing: [] };
 }
@@ -74,10 +77,22 @@ export function nextTrainingOutfit(items, model, swipedKeys, rng = Math.random) 
 
   if (rng() < 0.7) {
     const top = candidates
-      .map(outfit => ({ outfit, score: totalScore(outfit, model) }))
-      .sort((x, y) => y.score - x.score)
+      .map(outfit => ({ outfit, score: totalScore(outfit, model), tie: rng() }))
+      .sort(byScore)
       .slice(0, 10);
     return top[Math.floor(rng() * top.length)].outfit;
   }
   return candidates[Math.floor(rng() * candidates.length)];
+}
+
+// Why nextTrainingOutfit has nothing to offer: 'missing' (a slot is empty),
+// 'no-consistent' (no outfit has pieces within 1 dressiness of each other),
+// 'exhausted' (every consistent outfit is rated), or null (there is one).
+export function trainingBlocker(items, swipedKeys) {
+  const pools = {};
+  for (const s of SLOTS) pools[s] = byType(items, s);
+  if (SLOTS.some(s => pools[s].length === 0)) return 'missing';
+  const consistent = combos(pools, Math.random).filter(o => spread(o) <= 1);
+  if (!consistent.length) return 'no-consistent';
+  return consistent.some(o => !swipedKeys.has(outfitKey(o))) ? null : 'exhausted';
 }

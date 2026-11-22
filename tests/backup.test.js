@@ -26,3 +26,17 @@ test('readBackup rejects missing photo file', () => {
   const json = { app: 'wardrobe', version: 1, items: [{ id: 'a', type: 'top', colour: 'white', dressiness: 3, name: '', createdAt: 1, photoPath: 'photos/a.jpg' }], swipes: [] };
   assert.throws(() => readBackup(zipSync({ 'data.json': strToU8(JSON.stringify(json)) })), /Not a wardrobe backup/);
 });
+
+test('readBackup rejects invalid items and swipes', () => {
+  const msg = /Not a wardrobe backup/;
+  const good = data.items[0];
+  const variants = [
+    { items: [{ ...good, id: null }], swipes: [] },
+    { items: [{ ...good, type: 'hat' }], swipes: [] },
+    { items: [{ ...good, dressiness: 9 }], swipes: [] },
+    { items: [{ ...good, colour: 'tartan' }], swipes: [] },
+    { items: [good], swipes: [{ id: 'w', itemIds: { top: 'a' }, liked: true, at: 0 }] },
+    { items: [good], swipes: [{ id: 'w', itemIds: { top: 'a', trousers: 'b', shoes: 'c' }, liked: 'yes', at: 0 }] },
+  ];
+  for (const v of variants) assert.throws(() => readBackup(buildBackup(v)), msg);
+});

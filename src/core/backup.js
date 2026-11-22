@@ -1,5 +1,14 @@
 // Backup format: a zip holding data.json plus photos/<id>.jpg.
 import { zipSync, unzipSync, strToU8, strFromU8 } from '../../vendor/fflate.js';
+import { PALETTE } from './colours.js';
+import { SLOTS } from './occasions.js';
+
+const COLOURS = new Set(PALETTE.map(c => c.id));
+const isStr = v => typeof v === 'string' && v.length > 0;
+const validItem = i => i && isStr(i.id) && SLOTS.includes(i.type) && COLOURS.has(i.colour)
+  && Number.isInteger(i.dressiness) && i.dressiness >= 1 && i.dressiness <= 5;
+const validSwipe = s => s && isStr(s.id) && s.itemIds && SLOTS.every(k => isStr(s.itemIds[k]))
+  && typeof s.liked === 'boolean';
 
 const APP = 'wardrobe';
 const VERSION = 1;
@@ -25,7 +34,8 @@ export function readBackup(bytes) {
   } catch {
     throw invalid();
   }
-  if (!data || data.app !== APP || data.version !== VERSION || !Array.isArray(data.items) || !Array.isArray(data.swipes)) {
+  if (!data || data.app !== APP || data.version !== VERSION || !Array.isArray(data.items) || !Array.isArray(data.swipes)
+    || !data.items.every(validItem) || !data.swipes.every(validSwipe)) {
     throw invalid();
   }
   const items = data.items.map(({ photoPath, ...rest }) => {

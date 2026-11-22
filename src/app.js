@@ -8,6 +8,8 @@ import { maybeShowInstallPrompt } from './ui/install-prompt.js';
 
 export const APP_VERSION = '1.0.0';
 export const state = { items: [], swipes: [] };
+// Bumped on every reload so screens can tell their cached results are stale.
+export let dataVersion = 0;
 
 const screens = { wardrobe, outfit, train, settings };
 const titles = { wardrobe: 'Wardrobe', outfit: 'Outfit', train: 'Train', settings: 'Settings' };
@@ -17,6 +19,7 @@ export async function reload() {
   const [items, swipes] = await Promise.all([db.listItems(), db.listSwipes()]);
   state.items = items.sort((a, b) => b.createdAt - a.createdAt);
   state.swipes = swipes.sort((a, b) => a.at - b.at);
+  dataVersion++;
 }
 
 export async function showScreen(name) {
